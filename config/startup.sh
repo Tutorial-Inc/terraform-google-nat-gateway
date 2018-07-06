@@ -226,7 +226,7 @@ systemctl stop strongswan
 EOM
 
 rm -f /etc/monit/conf.d/vpn
-if [ "$$L2TP_CHECK_IP" -ne "" ]; then
+if [ "$$L2TP_CHECK_IP" != "" ]; then
 	cat - > /etc/monit/conf.d/vpn <<EOM
 check host ppp0 with address $$L2TP_CHECK_IP
    start program = "/sbin/vpn_connect"
