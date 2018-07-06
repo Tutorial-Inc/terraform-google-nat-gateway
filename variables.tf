@@ -74,6 +74,10 @@ variable machine_type {
   default     = "n1-standard-1"
 }
 
+variable service_account_email {
+  default = "default"
+}
+
 variable compute_image {
   description = "Image used for NAT compute VMs."
   default     = "debian-cloud/debian-9"
@@ -92,6 +96,51 @@ variable squid_enabled {
 variable squid_config {
   description = "The squid config file to use. If not specifed the module file config/squid.conf will be used."
   default     = ""
+}
+
+variable l2tp_enabled {
+  description = "Enable L2TP/IPSec connection proxy."
+  default     = "false"
+}
+
+variable l2tp_kms_keyring {
+  description = "KMS keyring name"
+  default = ""
+}
+
+variable l2tp_kms_key {
+  description = "KMS key name"
+  default = ""
+}
+
+variable l2tp_kms_location {
+  description = "KMS keyring location"
+  default = "global"
+}
+
+variable l2tp_ip_ciphertext {
+  description = "Encrypted L2TP endpoint IP address"
+  default = ""
+}
+
+variable l2tp_username_ciphertext {
+  description = "Encrypted IPSec username"
+  default = ""
+}
+
+variable l2tp_password_ciphertext {
+  description = "Encrypted IPSec password"
+  default = ""
+}
+
+variable l2tp_psk_ciphertext {
+  description = "Encrypted L2TP Pre-shared key"
+  default = ""
+}
+
+variable l2tp_ip_ranges {
+  description = "L2TP routing"
+  default = ["192.168.100.0/24"]
 }
 
 variable metadata {

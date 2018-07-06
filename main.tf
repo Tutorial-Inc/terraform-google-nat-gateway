@@ -21,6 +21,17 @@ data "template_file" "nat-startup-script" {
     squid_enabled = "${var.squid_enabled}"
     squid_config  = "${var.squid_config}"
     module_path   = "${path.module}"
+    
+    l2tp_enabled = "${var.l2tp_enabled}"
+    l2tp_kms_key = "${var.l2tp_kms_key}"
+    l2tp_kms_keyring = "${var.l2tp_kms_keyring}"
+    l2tp_kms_location = "${var.l2tp_kms_location}"
+
+    l2tp_ip_ciphertext = "${var.l2tp_ip_ciphertext}"
+    l2tp_username_ciphertext = "${var.l2tp_username_ciphertext}"
+    l2tp_password_ciphertext = "${var.l2tp_password_ciphertext}"
+    l2tp_psk_ciphertext = "${var.l2tp_psk_ciphertext}"
+    l2tp_ip_ranges = "${join(" ", var.l2tp_ip_ranges)}"
   }
 }
 
@@ -57,6 +68,14 @@ module "nat-gateway" {
   wait_for_instances = true
   metadata           = "${var.metadata}"
   ssh_source_ranges  = "${var.ssh_source_ranges}"
+  service_account_email = "${var.service_account_email}"
+  service_account_scopes = [
+    "https://www.googleapis.com/auth/cloudkms",
+    "https://www.googleapis.com/auth/compute",
+    "https://www.googleapis.com/auth/logging.write",
+    "https://www.googleapis.com/auth/monitoring.write",
+    "https://www.googleapis.com/auth/devstorage.full_control",
+  ]
 
   access_config = [
     {
