@@ -143,9 +143,24 @@ variable l2tp_ip_ranges {
   default = ["192.168.100.0/24"]
 }
 
-variable l2tp_gateway {
+variable l2tp_gateway_id {
+  description = "IPSec gateway ID"
+  default = ""
+}
+
+variable l2tp_check_ip {
   description = "L2TP healthcheck gateway IP address"
-  default = "192.168.100.254"
+  default = ""
+}
+
+variable ipsec_ike {
+  description = "IKE option for IPSec"
+  default = "3des-sha1-modp1024!"
+}
+
+variable ipsec_esp {
+  description = "ESP option for IPSec"
+  default = "3des-sha1!"
 }
 
 variable metadata {

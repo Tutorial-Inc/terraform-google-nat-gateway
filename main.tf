@@ -32,6 +32,10 @@ data "template_file" "nat-startup-script" {
     l2tp_password_ciphertext = "${var.l2tp_password_ciphertext}"
     l2tp_psk_ciphertext = "${var.l2tp_psk_ciphertext}"
     l2tp_ip_ranges = "${join(" ", var.l2tp_ip_ranges)}"
+    l2tp_check_ip = "${var.l2tp_check_ip}"
+    l2tp_gateway_id = "${var.l2tp_gateway_id}"
+    ipsec_ike = "${var.ipsec_ike}"
+    ipsec_esp = "${var.ipsec_esp}"
   }
 }
 

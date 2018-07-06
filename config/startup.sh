@@ -49,7 +49,10 @@ if [[ "$$ENABLE_L2TP" == "true" ]]; then
   L2TP_PASSWORD_CIPHER="${l2tp_password_ciphertext}"
   L2TP_PSK_CIPHER="${l2tp_psk_ciphertext}"
   L2TP_IP_RANGES="${l2tp_ip_ranges}"
-  L2TP_GATEWAY="${l2tp_gateway}"
+  L2TP_CHECK_IP="${l2tp_check_ip}"
+  L2TP_GW_ID="${l2tp_gateway_id}"
+  IPSEC_IKE="${ipsec_ike}"
+  IPSEC_ESP="${ipsec_esp}"
 
   # Fetch variables
   L2TP_IP=$$(echo $$L2TP_IP_CIPHER | base64 -d | gcloud kms decrypt --location $$L2TP_KMS_LOCATION \
@@ -97,8 +100,8 @@ conn %default
   keyingtries=0
   keyexchange=ikev1
   authby=secret
-  ike=3des-sha1-modp1024!
-  esp=3des-sha1!
+  ike=$$IPSEC_IKE
+  esp=$$IPSEC_ESP
 
 conn mainvpn
   keyexchange=ikev1
@@ -112,6 +115,7 @@ conn mainvpn
   leftprotoport=17/1701
   rightprotoport=17/1701
   right=$$L2TP_IP
+  rightid=$$L2TP_GW_ID
 EOM
 
   cat - > /etc/ipsec.secrets <<EOM
@@ -221,13 +225,16 @@ ipsec down mainvpn
 systemctl stop strongswan
 EOM
 
-cat - > /etc/monit/conf.d/vpn <<EOM
-check host ppp0 with address $$L2TP_GATEWAY
+rm -f /etc/monit/conf.d/vpn
+if [ "$$L2TP_CHECK_IP" -ne "" ]; then
+	cat - > /etc/monit/conf.d/vpn <<EOM
+check host ppp0 with address $$L2TP_CHECK_IP
    start program = "/sbin/vpn_connect"
    stop program = "/sbin/vpn_disconnect"
    if failed icmp type echo count 3 with timeout 15 seconds then restart
    if 5 restarts within 5 cycles then timeout
 EOM
+fi
 
 fi
 
