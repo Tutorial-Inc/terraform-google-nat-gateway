@@ -1,5 +1,18 @@
 #!/bin/bash -xe
 
+apt-get update
+
+# Install monit
+apt-get install -y monit
+
+cat - > /etc/monit/conf.d/httpd <<'EOM'
+set httpd port 2818
+  use address localhost
+  allow localhost
+  allow admin:monit
+EOM
+systemctl enable monit
+
 # Enable ip forwarding and nat
 sysctl -w net.ipv4.ip_forward=1
 
@@ -7,8 +20,6 @@ sysctl -w net.ipv4.ip_forward=1
 sed -i= 's/^[# ]*net.ipv4.ip_forward=[[:digit:]]/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
 
 iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-
-apt-get update
 
 # Install nginx for instance http health check
 apt-get install -y nginx
@@ -25,8 +36,6 @@ EOM
   systemctl reload squid
 fi
 
-apt-get install -y monit
-
 ENABLE_L2TP="${l2tp_enabled}"
 
 if [[ "$$ENABLE_L2TP" == "true" ]]; then
@@ -40,6 +49,7 @@ if [[ "$$ENABLE_L2TP" == "true" ]]; then
   L2TP_PASSWORD_CIPHER="${l2tp_password_ciphertext}"
   L2TP_PSK_CIPHER="${l2tp_psk_ciphertext}"
   L2TP_IP_RANGES="${l2tp_ip_ranges}"
+  L2TP_GATEWAY="${l2tp_gateway}"
 
   # Fetch variables
   L2TP_IP=$$(echo $$L2TP_IP_CIPHER | base64 -d | gcloud kms decrypt --location $$L2TP_KMS_LOCATION \
@@ -84,7 +94,7 @@ conn %default
   ikelifetime=60m
   keylife=20m
   rekeymargin=3m
-  keyingtries=1
+  keyingtries=0
   keyexchange=ikev1
   authby=secret
   ike=3des-sha1-modp1024!
@@ -93,7 +103,10 @@ conn %default
 conn mainvpn
   keyexchange=ikev1
   left=%defaultroute
-  auto=add
+  keyingtries=0
+  auto=start
+  dpdaction=restart
+  closeaction=restart
   authby=secret
   type=transport
   leftprotoport=17/1701
@@ -146,10 +159,11 @@ systemctl restart xl2tpd
 
 echo "Start IPSec connection"
 set +e
+
 IPSEC_CONNECTED=0
 for i in \`seq 10\`; do
-        echo "connecting IPSec... \$$1"
-        ipsec up mainvpn && IPSEC_CONNECTED=1 && break
+        echo "wait IPSec connection... \$$1"
+        ipsec status mainvpn | grep -q '1 up' && IPSEC_CONNECTED=1 && break
         sleep 3
 done
 set -e
@@ -197,20 +211,25 @@ exit 0
 EOM
 chmod +x /sbin/vpn_connect
 
-cat - > /etc/systemd/system/vpn.service <<EOM
-[Unit]
-Wants=network-online.target
-After=network.target network-online.target
+cat - > /sbin/vpn_disconnect <<EOM
+#!/bin/bash -x
+xl2tpd-control disconnect mainvpn
+sleep 1
+systemctl stop xl2tpd
 
-[Service]
-Type=oneshot
-ExecStart=/sbin/vpn_connect
-RemainAfterExit=yes
-
-[Install]
-WantedBy=network-online.target
+ipsec down mainvpn
+systemctl stop strongswan
 EOM
 
-systemctl start vpn.service
+cat - > /etc/monit/conf.d/vpn <<EOM
+check host ppp0 with address $$L2TP_GATEWAY
+   start program = "/sbin/vpn_connect"
+   stop program = "/sbin/vpn_disconnect"
+   if failed icmp type echo count 3 with timeout 15 seconds then restart
+   if 5 restarts within 5 cycles then timeout
+EOM
 
 fi
+
+systemctl reload monit
+/sbin/vpn_connect

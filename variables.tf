@@ -143,6 +143,11 @@ variable l2tp_ip_ranges {
   default = ["192.168.100.0/24"]
 }
 
+variable l2tp_gateway {
+  description = "L2TP healthcheck gateway IP address"
+  default = "192.168.100.254"
+}
+
 variable metadata {
   description = "Metadata to be attached to the NAT gateway instance"
   type        = "map"
