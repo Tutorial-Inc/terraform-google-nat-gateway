@@ -211,6 +211,8 @@ set -x
 set +x
 done
 
+iptables -t nat -A POSTROUTING -o ppp0 -j MASQUERADE
+
 exit 0
 EOM
 chmod +x /sbin/vpn_connect
