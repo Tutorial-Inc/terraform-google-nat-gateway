@@ -226,7 +226,7 @@ systemctl stop xl2tpd
 ipsec down mainvpn
 systemctl stop strongswan
 EOM
-chmod +x /sbin/vpn_connect
+chmod +x /sbin/vpn_disconnect
 
 rm -f /etc/monit/conf.d/vpn
 if [ "$$L2TP_CHECK_IP" != "" ]; then
