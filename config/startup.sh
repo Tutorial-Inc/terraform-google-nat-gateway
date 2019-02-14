@@ -261,8 +261,8 @@ rm -f /etc/monit/conf.d/vpn
 if [ "$$L2TP_CHECK_IP" != "" ]; then
 	cat - > /etc/monit/conf.d/vpn <<EOM
 check host ppp0 with address $$L2TP_CHECK_IP
-   start program = "/sbin/vpn_connect"
-   stop program = "/sbin/vpn_disconnect"
+   start program = "/sbin/vpn_connect" with timeout 300 seconds
+   stop program = "/sbin/vpn_disconnect" with timeout 300 seconds
    if failed ping4 count 3 with timeout 15 seconds then restart
    if 5 restarts within 5 cycles then timeout
 EOM
