@@ -130,6 +130,10 @@ lns = $$L2TP_IP
 ppp debug = yes
 pppoptfile = /etc/ppp/options.l2tpd.client
 length bit = yes
+autodial = yes
+redial = yes
+redial timeout = 10
+max redials = 10
 EOM
 
   cat - > /etc/ppp/options.l2tpd.client <<EOM
@@ -158,8 +162,8 @@ CTRL=/var/run/xl2tpd/l2tp-control
 mkdir -p /var/run/xl2tpd
 
 echo "Restart services"
-systemctl restart strongswan
-systemctl restart xl2tpd
+systemctl stop xl2tpd
+ipsec restart
 
 echo "Start IPSec connection"
 set +e
@@ -167,7 +171,7 @@ set +e
 IPSEC_CONNECTED=0
 for i in \`seq 10\`; do
         echo "wait IPSec connection... \$$1"
-        ipsec status mainvpn | grep -q '1 up' && IPSEC_CONNECTED=1 && break
+        ipsec status mainvpn | grep -q 'INSTALLED' && IPSEC_CONNECTED=1 && break
         sleep 3
 done
 set -e
@@ -177,6 +181,9 @@ else
         echo "IPSec connection failed"
         exit 1
 fi
+
+systemctl start xl2tpd
+sleep 10
 
 echo "Start L2TP connection"
 L2TP_CONNECTED=0
