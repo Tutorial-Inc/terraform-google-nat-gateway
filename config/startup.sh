@@ -246,7 +246,7 @@ if [ "$$L2TP_CHECK_IP" != "" ]; then
 check host ppp0 with address $$L2TP_CHECK_IP
    start program = "/sbin/vpn_connect"
    stop program = "/sbin/vpn_disconnect"
-   if failed icmp type echo count 3 with timeout 15 seconds then restart
+   if failed ping4 count 3 with timeout 15 seconds then restart
    if 5 restarts within 5 cycles then timeout
 EOM
 fi
