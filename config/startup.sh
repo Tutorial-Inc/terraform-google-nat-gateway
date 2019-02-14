@@ -103,7 +103,7 @@ conn %default
   ikelifetime=60m
   keylife=20m
   rekeymargin=3m
-  keyingtries=0
+  keyingtries=%forever
   keyexchange=ikev1
   authby=secret
   ike=$$IPSEC_IKE
@@ -112,7 +112,7 @@ conn %default
 conn mainvpn
   keyexchange=ikev1
   left=%defaultroute
-  keyingtries=0
+  keyingtries=%forever
   auto=start
   dpdaction=restart
   closeaction=restart
