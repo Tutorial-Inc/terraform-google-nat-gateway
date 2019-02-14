@@ -204,7 +204,9 @@ else
 fi
 
 systemctl start xl2tpd
-sleep 10
+sleep 5
+xl2tpd-control connect mainvpn
+sleep 5
 
 echo "Start L2TP connection"
 L2TP_CONNECTED=0
