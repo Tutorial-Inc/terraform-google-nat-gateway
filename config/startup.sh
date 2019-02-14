@@ -193,17 +193,11 @@ sleep 10
 
 echo "Start L2TP connection"
 L2TP_CONNECTED=0
-for i in \`seq 10\`; do
+for i in \`seq 20\`; do
         if [ -e \$$CTRL ]; then
                 for ii in \`seq 10\`; do
-                        echo "L2TP connecting... \$$i-\$$ii"
-                        echo "c mainvpn" > "\$$CTRL"
-                        if [ -d "/sys/class/net/ppp0" ]; then
-                                echo "L2TP: found ppp0"
-                                L2TP_CONNECTED=1
-                                break 2
-                        fi
-                        sleep 3
+                    echo "L2TP connecting... \$$i-\$$ii"
+                    ls /sys/class/net | grep -q ppp && L2TP_CONNECTED=1 && break 2 || sleep 3
                 done
         fi
         sleep 3
