@@ -182,6 +182,7 @@ CTRL=/var/run/xl2tpd/l2tp-control
 mkdir -p /var/run/xl2tpd
 
 echo "Restart services"
+systemctl restart strongswan
 systemctl stop xl2tpd
 ipsec restart
 
