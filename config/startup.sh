@@ -13,6 +13,12 @@ set httpd port 2818
 EOM
 systemctl enable monit
 
+cat - > /etc/cron.hourly/monit <<'EOM'
+#!/bin/sh
+/usr/bin/monit monitor all
+EOM
+chmod +x /etc/cron.hourly/monit
+
 # Enable ip forwarding and nat
 sysctl -w net.ipv4.ip_forward=1
 
