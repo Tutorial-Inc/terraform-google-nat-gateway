@@ -215,17 +215,6 @@ else
         echo "L2TP connection failed"
         exit 1
 fi
-
-echo "Add routes: $$L2TP_IP_RANGES"
-IP_RANGES="$$L2TP_IP_RANGES"
-for r in \$${IP_RANGES[@]}; do
-set -x
-  ip route add \$$r dev ppp0
-set +x
-done
-
-iptables -t nat -A POSTROUTING -o ppp0 -j MASQUERADE
-
 exit 0
 EOM
 chmod +x /sbin/vpn_connect
@@ -240,6 +229,22 @@ ipsec down mainvpn
 systemctl stop strongswan
 EOM
 chmod +x /sbin/vpn_disconnect
+
+
+cat - > /etc/ppp/ip-up.d/vpn <<EOM
+#!/bin/bash -ex
+
+echo "Add routes: $$L2TP_IP_RANGES"
+IP_RANGES="$$L2TP_IP_RANGES"
+for r in \$${IP_RANGES[@]}; do
+set -x
+  ip route add \$$r dev \$$1
+  set +x
+done
+
+iptables -t nat -A POSTROUTING -o \$$1 -j MASQUERADE
+EOM
+chmod +x /etc/ppp/ip-up.d/vpn
 
 rm -f /etc/monit/conf.d/vpn
 if [ "$$L2TP_CHECK_IP" != "" ]; then
