@@ -4,6 +4,19 @@ apt-get update
 
 # Install monit
 apt-get install -y monit
+systemctl stop monit
+
+cat - > /etc/monit/monitrc <<'EOM'
+set daemon 30
+set logfile /var/log/monit.log
+set idfile /var/lib/monit/id
+set statefile /var/lib/monit/state
+set eventqueue
+	basedir /var/lib/monit/events # set the base directory where events will be stored
+	slots 100                     # optionally limit the queue size
+include /etc/monit/conf.d/*
+include /etc/monit/conf-enabled/*
+EOM
 
 cat - > /etc/monit/conf.d/httpd <<'EOM'
 set httpd port 2818
@@ -11,6 +24,7 @@ set httpd port 2818
   allow localhost
   allow admin:monit
 EOM
+systemctl start monit
 systemctl enable monit
 
 cat - > /etc/cron.hourly/monit <<'EOM'
