@@ -8,7 +8,7 @@ systemctl stop monit
 
 cat - > /etc/monit/monitrc <<'EOM'
 set daemon 30
-set logfile /var/log/monit.log
+set logfile syslog
 set idfile /var/lib/monit/id
 set statefile /var/lib/monit/state
 set eventqueue
