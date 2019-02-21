@@ -4,6 +4,19 @@ apt-get update
 
 # Install monit
 apt-get install -y monit
+systemctl stop monit
+
+cat - > /etc/monit/monitrc <<'EOM'
+set daemon 30
+set logfile syslog
+set idfile /var/lib/monit/id
+set statefile /var/lib/monit/state
+set eventqueue
+	basedir /var/lib/monit/events # set the base directory where events will be stored
+	slots 100                     # optionally limit the queue size
+include /etc/monit/conf.d/*
+include /etc/monit/conf-enabled/*
+EOM
 
 cat - > /etc/monit/conf.d/httpd <<'EOM'
 set httpd port 2818
@@ -11,7 +24,14 @@ set httpd port 2818
   allow localhost
   allow admin:monit
 EOM
+systemctl start monit
 systemctl enable monit
+
+cat - > /etc/cron.hourly/monit <<'EOM'
+#!/bin/sh
+/usr/bin/monit monitor all
+EOM
+chmod +x /etc/cron.hourly/monit
 
 # Enable ip forwarding and nat
 sysctl -w net.ipv4.ip_forward=1
@@ -97,7 +117,7 @@ conn %default
   ikelifetime=60m
   keylife=20m
   rekeymargin=3m
-  keyingtries=0
+  keyingtries=%forever
   keyexchange=ikev1
   authby=secret
   ike=$$IPSEC_IKE
@@ -106,7 +126,7 @@ conn %default
 conn mainvpn
   keyexchange=ikev1
   left=%defaultroute
-  keyingtries=0
+  keyingtries=%forever
   auto=start
   dpdaction=restart
   closeaction=restart
@@ -130,6 +150,10 @@ lns = $$L2TP_IP
 ppp debug = yes
 pppoptfile = /etc/ppp/options.l2tpd.client
 length bit = yes
+autodial = yes
+redial = yes
+redial timeout = 10
+max redials = 10
 EOM
 
   cat - > /etc/ppp/options.l2tpd.client <<EOM
@@ -159,7 +183,8 @@ mkdir -p /var/run/xl2tpd
 
 echo "Restart services"
 systemctl restart strongswan
-systemctl restart xl2tpd
+systemctl stop xl2tpd
+ipsec restart
 
 echo "Start IPSec connection"
 set +e
@@ -167,7 +192,7 @@ set +e
 IPSEC_CONNECTED=0
 for i in \`seq 10\`; do
         echo "wait IPSec connection... \$$1"
-        ipsec status mainvpn | grep -q '1 up' && IPSEC_CONNECTED=1 && break
+        ipsec status mainvpn | grep -q 'INSTALLED' && IPSEC_CONNECTED=1 && break
         sleep 3
 done
 set -e
@@ -178,19 +203,18 @@ else
         exit 1
 fi
 
+systemctl start xl2tpd
+sleep 5
+xl2tpd-control connect mainvpn
+sleep 5
+
 echo "Start L2TP connection"
 L2TP_CONNECTED=0
-for i in \`seq 10\`; do
+for i in \`seq 20\`; do
         if [ -e \$$CTRL ]; then
                 for ii in \`seq 10\`; do
-                        echo "L2TP connecting... \$$i-\$$ii"
-                        echo "c mainvpn" > "\$$CTRL"
-                        if [ -d "/sys/class/net/ppp0" ]; then
-                                echo "L2TP: found ppp0"
-                                L2TP_CONNECTED=1
-                                break 2
-                        fi
-                        sleep 3
+                    echo "L2TP connecting... \$$i-\$$ii"
+                    ls /sys/class/net | grep -q ppp && L2TP_CONNECTED=1 && break 2 || sleep 3
                 done
         fi
         sleep 3
@@ -202,17 +226,6 @@ else
         echo "L2TP connection failed"
         exit 1
 fi
-
-echo "Add routes: $$L2TP_IP_RANGES"
-IP_RANGES="$$L2TP_IP_RANGES"
-for r in \$${IP_RANGES[@]}; do
-set -x
-  ip route add \$$r dev ppp0
-set +x
-done
-
-iptables -t nat -A POSTROUTING -o ppp0 -j MASQUERADE
-
 exit 0
 EOM
 chmod +x /sbin/vpn_connect
@@ -228,13 +241,29 @@ systemctl stop strongswan
 EOM
 chmod +x /sbin/vpn_disconnect
 
+
+cat - > /etc/ppp/ip-up.d/vpn <<EOM
+#!/bin/bash -ex
+
+echo "Add routes: $$L2TP_IP_RANGES"
+IP_RANGES="$$L2TP_IP_RANGES"
+for r in \$${IP_RANGES[@]}; do
+set -x
+  ip route add \$$r dev \$$1
+  set +x
+done
+
+iptables -t nat -A POSTROUTING -o \$$1 -j MASQUERADE
+EOM
+chmod +x /etc/ppp/ip-up.d/vpn
+
 rm -f /etc/monit/conf.d/vpn
 if [ "$$L2TP_CHECK_IP" != "" ]; then
 	cat - > /etc/monit/conf.d/vpn <<EOM
 check host ppp0 with address $$L2TP_CHECK_IP
-   start program = "/sbin/vpn_connect"
-   stop program = "/sbin/vpn_disconnect"
-   if failed icmp type echo count 3 with timeout 15 seconds then restart
+   start program = "/sbin/vpn_connect" with timeout 300 seconds
+   stop program = "/sbin/vpn_disconnect" with timeout 300 seconds
+   if failed ping4 count 3 with timeout 15 seconds then restart
    if 5 restarts within 5 cycles then timeout
 EOM
 fi
